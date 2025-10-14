@@ -5,7 +5,7 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors({
-  origin: "https://sincut.vercel.app/", //frontend url
+  origin: "https://sincut.vercel.app", //frontend url
 }));
 app.use(express.json());
 
