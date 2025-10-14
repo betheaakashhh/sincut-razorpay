@@ -4,7 +4,9 @@ const Razorpay = require("razorpay");
 const cors = require("cors");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "https://sincut.vercel.app/", //frontend url
+}));
 app.use(express.json());
 
 const razorpay = new Razorpay({
