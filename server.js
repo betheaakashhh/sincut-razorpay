@@ -34,35 +34,35 @@ app.post("/create-order", async (req, res) => {
 });
 
 // ====== Stripe Setup ======
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Stripe checkout session for international payments
-app.post("/create-checkout-session", async (req, res) => {
-  const { amount } = req.body;
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: { name: "Donation" },
-            unit_amount: amount * 100, // $1 → 100 cents
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: "https://sincut.vercel.app/success",
-      cancel_url: "https://sincut.vercel.app/cancel",
-    });
+// // Stripe checkout session for international payments
+// app.post("/create-checkout-session", async (req, res) => {
+//   const { amount } = req.body;
+//   try {
+//     const session = await stripe.checkout.sessions.create({
+//       payment_method_types: ["card"],
+//       mode: "payment",
+//       line_items: [
+//         {
+//           price_data: {
+//             currency: "usd",
+//             product_data: { name: "Donation" },
+//             unit_amount: amount * 100, // $1 → 100 cents
+//           },
+//           quantity: 1,
+//         },
+//       ],
+//       success_url: "https://sincut.vercel.app/success",
+//       cancel_url: "https://sincut.vercel.app/cancel",
+//     });
 
-    res.json({ url: session.url });
-  } catch (err) {
-    console.error("Stripe error:", err);
-    res.status(500).json({ error: "Failed to create checkout session" });
-  }
-});
+//     res.json({ url: session.url });
+//   } catch (err) {
+//     console.error("Stripe error:", err);
+//     res.status(500).json({ error: "Failed to create checkout session" });
+//   }
+// });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
