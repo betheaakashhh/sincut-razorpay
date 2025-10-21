@@ -5,17 +5,11 @@ const cors = require("cors");
 const Stripe = require("stripe"); // add stripe
 
 const app = express();
-<<<<<<< HEAD
-app.use(cors({
-  origin: "https://sincut.vercel.app", //frontend url
-}));
-=======
 app.use(
   cors({
     origin: "https://sincut.vercel.app", // frontend URL
   })
 );
->>>>>>> 27fd5c7 (stripe and package)
 app.use(express.json());
 
 // ====== Razorpay Setup ======
