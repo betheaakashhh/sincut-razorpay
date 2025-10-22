@@ -3,9 +3,14 @@ import express from 'express';
 import Razorpay from 'razorpay';
 import cors from 'cors';
 import { v2 as cloudinary } from 'cloudinary';
-// At the top of server.js, after imports
+
+dotenv.config();
+
+const app = express();
+
+// CORS Configuration - FIXED for Vercel deployment
 const allowedOrigins = [
-  'https://sincut.vercel.app',
+  'https://sincut.vercel.app', // Your frontend domain
   'http://localhost:3000',
   'http://localhost:3001'
 ];
@@ -14,21 +19,21 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      return callback(new Error('Not allowed by CORS'), false);
     }
-    return callback(null, true);
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-dotenv.config();
+// Handle preflight requests
+app.options('*', cors());
 
-const app = express();
-
-// Basic CORS - allow all origins for now
-app.use(cors());
 app.use(express.json());
 
 // Configure Cloudinary
@@ -55,7 +60,7 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Test route
+// Test route with CORS headers
 app.get("/api/test", (req, res) => {
   res.json({ 
     message: "✅ Backend is working!", 
@@ -64,6 +69,10 @@ app.get("/api/test", (req, res) => {
       configured: !!process.env.CLOUDINARY_CLOUD_NAME,
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
       folder: process.env.CLOUDINARY_FOLDER_NAME || 'peace-gallery'
+    },
+    cors: {
+      allowed_origins: allowedOrigins,
+      frontend_origin: req.headers.origin
     }
   });
 });
@@ -83,7 +92,7 @@ app.get("/api/cloudinary-debug", async (req, res) => {
     console.log('🔍 Debug: Checking Cloudinary folder:', folderName);
 
     // Try to list all resources first to see what's available
-    let allResources, folderResources, rootFolders;
+    let allResources, folderResources;
     
     try {
       allResources = await cloudinary.api.resources({
@@ -109,22 +118,12 @@ app.get("/api/cloudinary-debug", async (req, res) => {
       folderResources = { resources: [] };
     }
 
-    // Try to list root folders
-    try {
-      rootFolders = await cloudinary.api.root_folders();
-      console.log('✅ Root folders fetched');
-    } catch (error) {
-      console.error('❌ Error fetching root folders:', error.message);
-      rootFolders = { folders: [] };
-    }
-
     res.json({
       success: true,
       debug: {
         folder_name: folderName,
         all_resources_count: allResources.resources?.length || 0,
         folder_resources_count: folderResources.resources?.length || 0,
-        root_folders: rootFolders.folders?.map(f => f.name) || [],
         all_resources_sample: allResources.resources?.slice(0, 5).map(r => ({
           public_id: r.public_id,
           folder: r.folder,
@@ -156,7 +155,12 @@ app.get("/", (req, res) => {
       "GET /api/cloudinary-debug",
       "GET /api/photos", 
       "POST /create-order"
-    ]
+    ],
+    cors: {
+      allowed_origins: allowedOrigins,
+      your_origin: req.headers.origin,
+      is_allowed: allowedOrigins.includes(req.headers.origin)
+    }
   });
 });
 
@@ -177,7 +181,7 @@ app.post("/create-order", async (req, res) => {
   }
 });
 
-// Get Cloudinary Photos - UPDATED: Remove the 12-image limit
+// Get Cloudinary Photos
 app.get("/api/photos", async (req, res) => {
   try {
     // If Cloudinary is not configured, return dummy data
@@ -211,7 +215,7 @@ app.get("/api/photos", async (req, res) => {
     let photos = [];
 
     if (result.resources && result.resources.length > 0) {
-      // Use real Cloudinary images - NO LIMIT, use all images
+      // Use real Cloudinary images
       photos = result.resources.map((resource, index) => ({
         id: resource.public_id,
         src: cloudinary.url(resource.public_id, {
@@ -231,12 +235,11 @@ app.get("/api/photos", async (req, res) => {
       try {
         const anyResult = await cloudinary.api.resources({
           type: 'upload',
-          max_results: 50  // Increased from 20 to 50
+          max_results: 50
         });
         
         if (anyResult.resources && anyResult.resources.length > 0) {
           console.log(`📸 Found ${anyResult.resources.length} total images in Cloudinary`);
-          // UPDATED: Remove the .slice(0, 12) limit - use ALL images
           photos = anyResult.resources.map((resource, index) => ({
             id: resource.public_id,
             src: cloudinary.url(resource.public_id, {
@@ -345,4 +348,7 @@ app.listen(PORT, () => {
   console.log(`📍 Test endpoint: http://localhost:${PORT}/api/test`);
   console.log(`📍 Debug endpoint: http://localhost:${PORT}/api/cloudinary-debug`);
   console.log(`📍 Photos endpoint: http://localhost:${PORT}/api/photos`);
+  console.log(`📍 Allowed CORS origins:`, allowedOrigins);
 });
+
+export default app;
