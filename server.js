@@ -1,6 +1,4 @@
-// server.js (ES module)
-// Put this file at project root (or update paths to match your project)
-
+// server.js
 import dotenv from 'dotenv';
 import express from 'express';
 import Razorpay from 'razorpay';
@@ -9,26 +7,21 @@ import { v2 as cloudinary } from 'cloudinary';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 
-// ---------- Fix: proper imports (not strings) ----------
-import authRoutes from './routes/authRoutes.js'; // ensure this default-exports the router
-import errorMiddleware from './middleware/errorMiddleware.js';
-const { errorHandler, notFound } = errorMiddleware; // adjust folder name to match your repo
+// Import routes
+import authRoutes from './routes/authRoutes.js';
 
-// =======================================================
-// 🧩 Load Environment Variables
-// =======================================================
+// Load environment variables
 dotenv.config();
-connectDB();
 
-// =======================================================
-// ⚙️ Initialize Express App
-// =======================================================
+// Connect to MongoDB
+console.log('🔄 Connecting to MongoDB...');
+await connectDB();
+
+// Initialize Express App
 const app = express();
-app.use(cookieParser());
-app.use(express.json()); // parse JSON bodies
 
 // =======================================================
-// 🌐 CORS Configuration
+// 🌐 CORS Configuration - IMPROVED
 // =======================================================
 const allowedOrigins = [
   'https://sincut.vercel.app',
@@ -36,23 +29,33 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:5173',
   'http://localhost:5174',
-   'http://localhost:5000',
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-      if (!allowedOrigins.includes(origin)) {
-        const msg = 'CORS policy does not allow access from the specified Origin.';
-        return callback(new Error(msg), false);
-      }
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
       return callback(null, true);
-    },
-    credentials: true,
-  })
-);
+    }
+    // Allow all vercel.app subdomains
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    const msg = 'CORS policy does not allow access from the specified Origin.';
+    return callback(new Error(msg), false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+}));
+
+// Handle preflight requests globally
+app.options('*', cors());
+
+// Middleware
+app.use(cookieParser());
+app.use(express.json());
 
 // =======================================================
 // ☁️ Cloudinary Configuration
@@ -86,12 +89,42 @@ const razorpay = new Razorpay({
 });
 
 // =======================================================
-// 🧪 Health & Test Routes
+// 🏠 Root & Health Routes
 // =======================================================
 app.get('/', (req, res) => {
   res.json({
     status: 'Server is running ✅',
-    endpoints: ['GET /api/test', 'GET /api/cloudinary-debug', 'GET /api/photos', 'POST /create-order'],
+    message: 'Welcome to Sincut Backend API',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: 'GET /api/health',
+      test: 'GET /api/test',
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        logout: 'POST /api/auth/logout',
+        refresh: 'POST /api/auth/refresh-token',
+        me: 'GET /api/auth/me'
+      },
+      cloudinary: 'GET /api/cloudinary-debug',
+      photos: 'GET /api/photos',
+      razorpay: 'POST /create-order'
+    },
+    documentation: 'Check the README for API documentation'
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Backend API is healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    database: 'MongoDB Connected',
+    cors: {
+      allowedOrigins: allowedOrigins,
+      credentials: true
+    }
   });
 });
 
@@ -106,6 +139,11 @@ app.get('/api/test', (req, res) => {
     },
   });
 });
+
+// =======================================================
+// 🔐 Auth Routes
+// =======================================================
+app.use('/api/auth', authRoutes);
 
 // =======================================================
 // 🧠 Cloudinary Debug Route
@@ -271,32 +309,36 @@ function getDummyPhotos() {
 }
 
 // =======================================================
-// auth Routes
+// ❌ 404 Handler for undefined routes
 // =======================================================
-app.use('/api/auth', authRoutes);
-
-// =======================================================
-// health (fixed — single response)
-// =======================================================
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    time: new Date().toISOString(),
-    routes: ['GET /api/test', 'GET /api/health', 'GET /api/auth/register', 'GET /api/auth/login']
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    message: `Cannot ${req.method} ${req.originalUrl}`,
+    availableRoutes: [
+      'GET /',
+      'GET /api/health',
+      'GET /api/test',
+      'POST /api/auth/register',
+      'POST /api/auth/login',
+      'GET /api/cloudinary-debug',
+      'GET /api/photos',
+      'POST /create-order'
+    ]
   });
 });
 
-// Error Handling Middlewares (make sure the import path above is correct)
-app.use(notFound);
-app.use(errorHandler);
+// =======================================================
+// 🚀 Launch Server
+// =======================================================
+const PORT = process.env.PORT || 5000;
 
-// =======================================================
-// 🚀 Launch (local) or export for serverless
-// =======================================================
-if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 5000;
+// Only listen locally, Vercel will handle the serverless function
+if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔐 Auth routes: http://localhost:${PORT}/api/auth`);
   });
 }
 
