@@ -51,11 +51,12 @@ app.use(cors({
 }));
 
 // Handle preflight requests globally
-app.options('/*', cors());
+app.options('/.*/', cors());
 
 // Middleware
-app.use(cookieParser());
 app.use(express.json());
+app.use(cookieParser());
+
 
 // =======================================================
 // ☁️ Cloudinary Configuration
