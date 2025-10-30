@@ -57,7 +57,7 @@ export const register = asyncHandler(async (req, res) => {
   res.cookie('jid', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
+    sameSite: 'None',
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
@@ -103,7 +103,7 @@ export const login = asyncHandler(async (req, res) => {
     res.cookie('jid', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
+      sameSite: 'None',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -179,7 +179,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
   res.cookie('jid', newRefreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
+    sameSite: 'None',
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });

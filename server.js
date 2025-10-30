@@ -31,27 +31,35 @@ const allowedOrigins = [
   'http://localhost:5174',
 ];
 
+// server.js — CORS setup (replace existing cors block)
+
+
+// Use a standard cors middleware + explicit options handler
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
+    // Allow requests with no origin (tools, mobile)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    // Allow all vercel.app subdomains
-    if (origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-    const msg = 'CORS policy does not allow access from the specified Origin.';
-    return callback(new Error(msg), false);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow Vercel subdomains:
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
+app.use((req, res, next) => {
+  // When using credentials true, origin must be explicit (not '*')
+  if (req.headers.origin) {
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  }
+  next();
+});
 
-// Handle preflight requests globally
-app.options('/.*/', cors());
+// Ensure preflight responses are handled for EVERYTHING
+app.options('*', cors());
+
 
 // Middleware
 app.use(express.json());
