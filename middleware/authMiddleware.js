@@ -4,7 +4,7 @@ import asyncHandler from 'express-async-handler';
 
 
 export const protect = asyncHandler(async (req, res, next) => {
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization.split(',') || req.cookies.jid;
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1]; 
         try {
