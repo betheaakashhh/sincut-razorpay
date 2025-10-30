@@ -56,7 +56,7 @@ export const register = asyncHandler(async (req, res) => {
   // Set cookie
   res.cookie('jid', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     sameSite: 'None',
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days

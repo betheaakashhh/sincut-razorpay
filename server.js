@@ -35,17 +35,30 @@ const allowedOrigins = [
 
 
 // Use a standard cors middleware + explicit options handler
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (tools, mobile)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    // Allow Vercel subdomains:
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'), false);
-  },
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // also allow any Vercel preview URLs:
+      if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true, // allow sending cookies
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  })
+);
+
+// Ensure preflight responses are handled for EVERYTHING
+app.options('*', cors({
+  origin: allowedOrigins,
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
 app.use((req, res, next) => {
@@ -55,11 +68,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
   }
   next();
-});
-
-// Ensure preflight responses are handled for EVERYTHING
-app.options('/*', cors());
-
+})
 
 // Middleware
 app.use(express.json());
