@@ -58,7 +58,7 @@ app.use((req, res, next) => {
 });
 
 // Ensure preflight responses are handled for EVERYTHING
-app.options('*', cors());
+app.options('/*', cors());
 
 
 // Middleware
