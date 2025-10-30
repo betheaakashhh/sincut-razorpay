@@ -1,4 +1,4 @@
-// server.js - Fixed for Vercel
+// server.js
 import dotenv from 'dotenv';
 import express from 'express';
 import Razorpay from 'razorpay';
@@ -7,14 +7,21 @@ import { v2 as cloudinary } from 'cloudinary';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 
-// Load environment variables FIRST
+// Import routes
+import authRoutes from './routes/authRoutes.js';
+
+// Load environment variables
 dotenv.config();
+
+// Connect to MongoDB
+console.log('🔄 Connecting to MongoDB...');
+await connectDB();
 
 // Initialize Express App
 const app = express();
 
 // =======================================================
-// 🌐 CORS Configuration - FIXED for Vercel
+// 🌐 CORS Configuration - IMPROVED
 // =======================================================
 const allowedOrigins = [
   'https://sincut.vercel.app',
@@ -24,27 +31,86 @@ const allowedOrigins = [
   'http://localhost:5174',
 ];
 
-// Use simplified CORS configuration
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    // Allow all vercel.app subdomains
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    const msg = 'CORS policy does not allow access from the specified Origin.';
+    return callback(new Error(msg), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
+
+// Handle preflight requests globally
+app.options('*', cors());
 
 // Middleware
 app.use(cookieParser());
 app.use(express.json());
 
 // =======================================================
-// 🏠 Basic Routes
+// ☁️ Cloudinary Configuration
+// =======================================================
+console.log('🔧 Cloudinary Configuration:');
+console.log('Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME || 'Not set');
+console.log('API Key:', process.env.CLOUDINARY_API_KEY ? '✅ Set' : '❌ Missing');
+console.log('API Secret:', process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing');
+console.log('Folder Name:', process.env.CLOUDINARY_FOLDER_NAME || 'peace-gallery');
+
+try {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  console.log('✅ Cloudinary configured successfully');
+} catch (error) {
+  console.error('❌ Cloudinary configuration failed:', error?.message || error);
+}
+
+// =======================================================
+// 💰 Razorpay Setup
+// =======================================================
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  console.warn('⚠️ Razorpay keys are not set. /create-order will fail until keys are provided.');
+}
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// =======================================================
+// 🏠 Root & Health Routes
 // =======================================================
 app.get('/', (req, res) => {
   res.json({
     status: 'Server is running ✅',
     message: 'Welcome to Sincut Backend API',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    endpoints: {
+      health: 'GET /api/health',
+      test: 'GET /api/test',
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        logout: 'POST /api/auth/logout',
+        refresh: 'POST /api/auth/refresh-token',
+        me: 'GET /api/auth/me'
+      },
+      cloudinary: 'GET /api/cloudinary-debug',
+      photos: 'GET /api/photos',
+      razorpay: 'POST /create-order'
+    },
+    documentation: 'Check the README for API documentation'
   });
 });
 
@@ -54,6 +120,7 @@ app.get('/api/health', (req, res) => {
     message: 'Backend API is healthy',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    database: 'MongoDB Connected',
     cors: {
       allowedOrigins: allowedOrigins,
       credentials: true
@@ -65,102 +132,58 @@ app.get('/api/test', (req, res) => {
   res.json({
     message: '✅ Backend is working!',
     timestamp: new Date().toISOString(),
-    database: 'MongoDB Connected'
+    cloudinary: {
+      configured: !!process.env.CLOUDINARY_CLOUD_NAME,
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      folder: process.env.CLOUDINARY_FOLDER_NAME || 'peace-gallery',
+    },
   });
 });
-
-// =======================================================
-// 🔧 Initialize Services
-// =======================================================
-console.log('🔧 Initializing services...');
-
-// Cloudinary
-if (process.env.CLOUDINARY_CLOUD_NAME) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
-  console.log('✅ Cloudinary configured');
-}
-
-// Razorpay
-let razorpay;
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-  console.log('✅ Razorpay initialized');
-}
 
 // =======================================================
 // 🔐 Auth Routes
 // =======================================================
-// Simple test routes first
-app.post('/api/auth/register', async (req, res) => {
+app.use('/api/auth', authRoutes);
+
+// =======================================================
+// 🧠 Cloudinary Debug Route
+// =======================================================
+app.get('/api/cloudinary-debug', async (req, res) => {
   try {
-    const { email, password, name, gender, occupationType, occupation, agreedToPrivacyPolicy } = req.body;
-
-    console.log('📝 Registration attempt:', { email, name });
-
-    // Basic validation
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!process.env.CLOUDINARY_CLOUD_NAME) {
+      return res.json({
+        error: 'Cloudinary not configured',
+        message: 'Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET',
+      });
     }
 
-    if (!agreedToPrivacyPolicy) {
-      return res.status(400).json({ error: 'You must agree to the privacy policy' });
-    }
+    const folderName = process.env.CLOUDINARY_FOLDER_NAME || 'imagx';
+    console.log('🔍 Debug: Checking Cloudinary folder:', folderName);
 
-    // For now, return success without DB operations
-    res.status(201).json({
-      message: 'User registered successfully (test mode)',
-      user: {
-        _id: 'temp_id_' + Date.now(),
-        name: name || 'Test User',
-        email: email,
-        gender: gender,
-        occupation: occupationType === 'other' ? occupation : occupationType
-      },
-      accessToken: 'temp_jwt_token_' + Date.now()
-    });
+    const [allResources, folderResources, rootFolders] = await Promise.all([
+      cloudinary.api.resources({ type: 'upload', max_results: 50 }).catch(() => ({ resources: [] })),
+      cloudinary.api.resources({ type: 'upload', prefix: folderName, max_results: 50 }).catch(() => ({ resources: [] })),
+      cloudinary.api.root_folders().catch(() => ({ folders: [] })),
+    ]);
 
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ 
-      error: 'Registration failed',
-      message: error.message 
-    });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    console.log('🔐 Login attempt:', { email });
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    // Simple response for testing
     res.json({
-      message: 'Login successful (test mode)',
-      user: { 
-        email: email, 
-        name: 'Test User',
-        _id: 'user_' + Date.now()
+      success: true,
+      debug: {
+        folder_name: folderName,
+        all_resources_count: allResources.resources?.length || 0,
+        folder_resources_count: folderResources.resources?.length || 0,
+        root_folders: rootFolders.folders?.map((f) => f.name) || [],
+        all_resources_sample:
+          allResources.resources?.slice(0, 5).map((r) => ({ public_id: r.public_id, folder: r.folder, format: r.format })) || [],
+        folder_resources_sample:
+          folderResources.resources?.slice(0, 5).map((r) => ({ public_id: r.public_id, folder: r.folder, format: r.format })) || [],
       },
-      accessToken: 'temp_jwt_token_' + Date.now()
     });
-
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ 
-      error: 'Login failed',
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      details: 'Check Cloudinary credentials and folder name',
     });
   }
 });
@@ -169,23 +192,16 @@ app.post('/api/auth/login', async (req, res) => {
 // 💳 Razorpay Order Creation
 // =======================================================
 app.post('/create-order', async (req, res) => {
+  const { amount } = req.body;
+  if (!amount || isNaN(amount) || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid amount' });
+  }
   try {
-    const { amount } = req.body;
-    
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
-    }
-
-    if (!razorpay) {
-      return res.status(500).json({ error: 'Razorpay not configured' });
-    }
-
     const order = await razorpay.orders.create({
-      amount: Math.round(Number(amount) * 100),
+      amount: Math.round(Number(amount) * 100), // paise
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
     });
-    
     res.json(order);
   } catch (err) {
     console.error('Razorpay error:', err);
@@ -194,43 +210,108 @@ app.post('/create-order', async (req, res) => {
 });
 
 // =======================================================
-// 🖼️ Cloudinary Photos
+// 🖼️ Cloudinary Photo Fetch Route
 // =======================================================
 app.get('/api/photos', async (req, res) => {
   try {
-    const dummyPhotos = [
-      {
-        id: 1,
-        src: 'https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=400&h=500&fit=crop',
-        title: 'Sunset Meditation',
-        category: 'Nature',
-      },
-      {
-        id: 2,
-        src: 'https://images.unsplash.com/photo-1554629947-334ff61d85dc?w=600&h=400&fit=crop',
-        title: 'Mountain Peace',
-        category: 'Landscape',
-      }
-    ];
+    if (!process.env.CLOUDINARY_CLOUD_NAME) {
+      return res.json({
+        success: true,
+        photos: getDummyPhotos(),
+        message: 'Using sample data - Configure Cloudinary for real images',
+        source: 'sample',
+      });
+    }
+
+    const folderName = process.env.CLOUDINARY_FOLDER_NAME || 'imagx';
+    let result = await cloudinary.api.resources({ type: 'upload', prefix: folderName, max_results: 50 });
+
+    let photos =
+      result.resources?.map((r, i) => ({
+        id: r.public_id,
+        src: cloudinary.url(r.public_id, { width: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }),
+        width: r.width,
+        height: r.height,
+        title: r.context?.custom?.caption || `Peaceful Moment ${i + 1}`,
+        category: r.context?.custom?.category || 'General',
+      })) || [];
+
+    if (!photos.length) {
+      result = await cloudinary.api.resources({ type: 'upload', max_results: 50 });
+      photos =
+        result.resources?.map((r, i) => ({
+          id: r.public_id,
+          src: cloudinary.url(r.public_id, { width: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }),
+          width: r.width,
+          height: r.height,
+          title: r.context?.custom?.caption || `Cloudinary Image ${i + 1}`,
+          category: r.folder || 'General',
+        })) || getDummyPhotos();
+    }
 
     res.json({
       success: true,
-      photos: dummyPhotos,
-      message: 'Using sample data'
+      photos,
+      total: photos.length,
+      source: 'cloudinary',
+      message: `Loaded ${photos.length} images from Cloudinary`,
     });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Photos endpoint error',
-      message: error.message 
+    console.error('Cloudinary photos error:', error);
+    res.json({
+      success: false,
+      error: error?.message || 'Cloudinary error',
+      photos: getDummyPhotos(),
+      message: 'Using fallback data due to Cloudinary error',
+      source: 'sample',
     });
   }
 });
 
 // =======================================================
-// ❌ 404 Handler - FIXED for Vercel
+// 📸 Dummy Photos (Fallback)
 // =======================================================
-// Use specific catch-all instead of '*'
-app.use((req, res) => {
+function getDummyPhotos() {
+  return [
+    {
+      id: 1,
+      src: 'https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=400&h=500&fit=crop',
+      width: 400,
+      height: 500,
+      title: 'Sunset Meditation',
+      category: 'Nature',
+    },
+    {
+      id: 2,
+      src: 'https://images.unsplash.com/photo-1554629947-334ff61d85dc?w=600&h=400&fit=crop',
+      width: 600,
+      height: 400,
+      title: 'Mountain Peace',
+      category: 'Landscape',
+    },
+    {
+      id: 3,
+      src: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=500&fit=crop',
+      width: 300,
+      height: 500,
+      title: 'Serene Waters',
+      category: 'Water',
+    },
+    {
+      id: 4,
+      src: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=500&h=300&fit=crop',
+      width: 500,
+      height: 300,
+      title: 'Forest Path',
+      category: 'Nature',
+    },
+  ];
+}
+
+// =======================================================
+// ❌ 404 Handler for undefined routes
+// =======================================================
+app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Route not found',
     message: `Cannot ${req.method} ${req.originalUrl}`,
@@ -240,6 +321,7 @@ app.use((req, res) => {
       'GET /api/test',
       'POST /api/auth/register',
       'POST /api/auth/login',
+      'GET /api/cloudinary-debug',
       'GET /api/photos',
       'POST /create-order'
     ]
@@ -247,17 +329,17 @@ app.use((req, res) => {
 });
 
 // =======================================================
-// ⚠️ Error Handler
+// 🚀 Launch Server
 // =======================================================
-app.use((error, req, res, next) => {
-  console.error('Unhandled error:', error);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message
-  });
-});
+const PORT = process.env.PORT || 5000;
 
-// =======================================================
-// 🚀 Export for Vercel
-// =======================================================
+// Only listen locally, Vercel will handle the serverless function
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔐 Auth routes: http://localhost:${PORT}/api/auth`);
+  });
+}
+
 export default app;
