@@ -51,7 +51,7 @@ app.use(cors({
 }));
 
 // Handle preflight requests globally
-
+app.options('/*', cors());
 
 // Middleware
 app.use(cookieParser());
