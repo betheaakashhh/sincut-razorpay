@@ -311,22 +311,7 @@ function getDummyPhotos() {
 // =======================================================
 // ❌ 404 Handler for undefined routes
 // =======================================================
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    message: `Cannot ${req.method} ${req.originalUrl}`,
-    availableRoutes: [
-      'GET /',
-      'GET /api/health',
-      'GET /api/test',
-      'POST /api/auth/register',
-      'POST /api/auth/login',
-      'GET /api/cloudinary-debug',
-      'GET /api/photos',
-      'POST /create-order'
-    ]
-  });
-});
+
 
 // =======================================================
 // 🚀 Launch Server
