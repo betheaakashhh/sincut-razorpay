@@ -1,31 +1,18 @@
-// server.js (ES module)
-// Put this file at project root (or update paths to match your project)
-
 import dotenv from 'dotenv';
 import express from 'express';
 import Razorpay from 'razorpay';
 import cors from 'cors';
 import { v2 as cloudinary } from 'cloudinary';
-import cookieParser from 'cookie-parser';
-import connectDB from './config/db.js';
-
-// ---------- Fix: proper imports (not strings) ----------
-import authRoutes from './routes/authRoutes.js'; // ensure this default-exports the router
-import errorMiddleware from './middleware/errorMiddleware.js';
-const { errorHandler, notFound } = errorMiddleware; // adjust folder name to match your repo
 
 // =======================================================
 // 🧩 Load Environment Variables
 // =======================================================
 dotenv.config();
-connectDB();
 
 // =======================================================
 // ⚙️ Initialize Express App
 // =======================================================
 const app = express();
-app.use(cookieParser());
-app.use(express.json()); // parse JSON bodies
 
 // =======================================================
 // 🌐 CORS Configuration
@@ -36,7 +23,6 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:5173',
   'http://localhost:5174',
-   'http://localhost:5000',
 ];
 
 app.use(
@@ -45,7 +31,8 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
       if (!allowedOrigins.includes(origin)) {
-        const msg = 'CORS policy does not allow access from the specified Origin.';
+        const msg =
+          'CORS policy does not allow access from the specified Origin.';
         return callback(new Error(msg), false);
       }
       return callback(null, true);
@@ -54,14 +41,25 @@ app.use(
   })
 );
 
+app.use(express.json());
+
 // =======================================================
 // ☁️ Cloudinary Configuration
 // =======================================================
 console.log('🔧 Cloudinary Configuration:');
 console.log('Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME || 'Not set');
-console.log('API Key:', process.env.CLOUDINARY_API_KEY ? '✅ Set' : '❌ Missing');
-console.log('API Secret:', process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing');
-console.log('Folder Name:', process.env.CLOUDINARY_FOLDER_NAME || 'peace-gallery');
+console.log(
+  'API Key:',
+  process.env.CLOUDINARY_API_KEY ? '✅ Set' : '❌ Missing'
+);
+console.log(
+  'API Secret:',
+  process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing'
+);
+console.log(
+  'Folder Name:',
+  process.env.CLOUDINARY_FOLDER_NAME || 'peace-gallery'
+);
 
 try {
   cloudinary.config({
@@ -71,15 +69,12 @@ try {
   });
   console.log('✅ Cloudinary configured successfully');
 } catch (error) {
-  console.error('❌ Cloudinary configuration failed:', error?.message || error);
+  console.error('❌ Cloudinary configuration failed:', error.message);
 }
 
 // =======================================================
 // 💰 Razorpay Setup
 // =======================================================
-if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.warn('⚠️ Razorpay keys are not set. /create-order will fail until keys are provided.');
-}
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -91,7 +86,12 @@ const razorpay = new Razorpay({
 app.get('/', (req, res) => {
   res.json({
     status: 'Server is running ✅',
-    endpoints: ['GET /api/test', 'GET /api/cloudinary-debug', 'GET /api/photos', 'POST /create-order'],
+    endpoints: [
+      'GET /api/test',
+      'GET /api/cloudinary-debug',
+      'GET /api/photos',
+      'POST /create-order',
+    ],
   });
 });
 
@@ -115,7 +115,8 @@ app.get('/api/cloudinary-debug', async (req, res) => {
     if (!process.env.CLOUDINARY_CLOUD_NAME) {
       return res.json({
         error: 'Cloudinary not configured',
-        message: 'Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET',
+        message:
+          'Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET',
       });
     }
 
@@ -123,8 +124,12 @@ app.get('/api/cloudinary-debug', async (req, res) => {
     console.log('🔍 Debug: Checking Cloudinary folder:', folderName);
 
     const [allResources, folderResources, rootFolders] = await Promise.all([
-      cloudinary.api.resources({ type: 'upload', max_results: 50 }).catch(() => ({ resources: [] })),
-      cloudinary.api.resources({ type: 'upload', prefix: folderName, max_results: 50 }).catch(() => ({ resources: [] })),
+      cloudinary.api
+        .resources({ type: 'upload', max_results: 50 })
+        .catch(() => ({ resources: [] })),
+      cloudinary.api
+        .resources({ type: 'upload', prefix: folderName, max_results: 50 })
+        .catch(() => ({ resources: [] })),
       cloudinary.api.root_folders().catch(() => ({ folders: [] })),
     ]);
 
@@ -136,9 +141,17 @@ app.get('/api/cloudinary-debug', async (req, res) => {
         folder_resources_count: folderResources.resources?.length || 0,
         root_folders: rootFolders.folders?.map((f) => f.name) || [],
         all_resources_sample:
-          allResources.resources?.slice(0, 5).map((r) => ({ public_id: r.public_id, folder: r.folder, format: r.format })) || [],
+          allResources.resources?.slice(0, 5).map((r) => ({
+            public_id: r.public_id,
+            folder: r.folder,
+            format: r.format,
+          })) || [],
         folder_resources_sample:
-          folderResources.resources?.slice(0, 5).map((r) => ({ public_id: r.public_id, folder: r.folder, format: r.format })) || [],
+          folderResources.resources?.slice(0, 5).map((r) => ({
+            public_id: r.public_id,
+            folder: r.folder,
+            format: r.format,
+          })) || [],
       },
     });
   } catch (error) {
@@ -155,19 +168,15 @@ app.get('/api/cloudinary-debug', async (req, res) => {
 // =======================================================
 app.post('/create-order', async (req, res) => {
   const { amount } = req.body;
-  if (!amount || isNaN(amount) || amount <= 0) {
-    return res.status(400).json({ error: 'Invalid amount' });
-  }
   try {
     const order = await razorpay.orders.create({
-      amount: Math.round(Number(amount) * 100), // paise
+      amount: amount * 100,
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
     });
     res.json(order);
   } catch (err) {
-    console.error('Razorpay error:', err);
-    res.status(500).json({ error: err?.message || 'Razorpay error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -186,12 +195,21 @@ app.get('/api/photos', async (req, res) => {
     }
 
     const folderName = process.env.CLOUDINARY_FOLDER_NAME || 'imagx';
-    let result = await cloudinary.api.resources({ type: 'upload', prefix: folderName, max_results: 50 });
+    let result = await cloudinary.api.resources({
+      type: 'upload',
+      prefix: folderName,
+      max_results: 50,
+    });
 
     let photos =
       result.resources?.map((r, i) => ({
         id: r.public_id,
-        src: cloudinary.url(r.public_id, { width: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }),
+        src: cloudinary.url(r.public_id, {
+          width: 800,
+          crop: 'limit',
+          quality: 'auto',
+          fetch_format: 'auto',
+        }),
         width: r.width,
         height: r.height,
         title: r.context?.custom?.caption || `Peaceful Moment ${i + 1}`,
@@ -203,7 +221,12 @@ app.get('/api/photos', async (req, res) => {
       photos =
         result.resources?.map((r, i) => ({
           id: r.public_id,
-          src: cloudinary.url(r.public_id, { width: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }),
+          src: cloudinary.url(r.public_id, {
+            width: 800,
+            crop: 'limit',
+            quality: 'auto',
+            fetch_format: 'auto',
+          }),
           width: r.width,
           height: r.height,
           title: r.context?.custom?.caption || `Cloudinary Image ${i + 1}`,
@@ -219,10 +242,9 @@ app.get('/api/photos', async (req, res) => {
       message: `Loaded ${photos.length} images from Cloudinary`,
     });
   } catch (error) {
-    console.error('Cloudinary photos error:', error);
     res.json({
       success: false,
-      error: error?.message || 'Cloudinary error',
+      error: error.message,
       photos: getDummyPhotos(),
       message: 'Using fallback data due to Cloudinary error',
       source: 'sample',
@@ -271,27 +293,7 @@ function getDummyPhotos() {
 }
 
 // =======================================================
-// auth Routes
-// =======================================================
-app.use('/api/auth', authRoutes);
-
-// =======================================================
-// health (fixed — single response)
-// =======================================================
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    time: new Date().toISOString(),
-    routes: ['GET /api/test', 'GET /api/health', 'GET /api/auth/register', 'GET /api/auth/login']
-  });
-});
-
-// Error Handling Middlewares (make sure the import path above is correct)
-app.use(notFound);
-app.use(errorHandler);
-
-// =======================================================
-// 🚀 Launch (local) or export for serverless
+// 🚀 Export for Vercel (Serverless) + Local Run
 // =======================================================
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
