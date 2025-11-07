@@ -31,6 +31,11 @@ const allowedOrigins = [
 
 
 // Use a standard cors middleware + explicit options handler
+// =======================================================
+// 🌐 CORS Configuration - FINAL VERSION
+// =======================================================
+
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
@@ -42,15 +47,14 @@ app.use(cors({
   credentials: true,
 }));
 
-
-// Ensure preflight responses are handled for EVERYTHING
-app.options('*', cors({
+// ✅ Fixed preflight handler for Express 4.21+
+app.options(/.*/, cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
-// Handle preflight (OPTIONS) manually for all routes
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', allowedOrigins.includes(req.headers.origin) ? req.headers.origin : allowedOrigins[0]);
   res.header('Access-Control-Allow-Credentials', 'true');
