@@ -25,10 +25,6 @@ const app = express();
 // =======================================================
 const allowedOrigins = [
   'https://sincut.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
-  'http://localhost:5174',
 ];
 
 // server.js — CORS setup (replace existing cors block)
