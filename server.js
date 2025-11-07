@@ -55,7 +55,7 @@ app.use(
 );
 
 // Ensure preflight responses are handled for EVERYTHING
-app.options('*', cors({
+app.options('/*', cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
