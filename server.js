@@ -50,14 +50,16 @@ app.options('*', cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
+// Handle preflight (OPTIONS) manually for all routes
 app.use((req, res, next) => {
-  // When using credentials true, origin must be explicit (not '*')
-  if (req.headers.origin) {
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-  }
+  res.header('Access-Control-Allow-Origin', allowedOrigins.includes(req.headers.origin) ? req.headers.origin : allowedOrigins[0]);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
-})
+});
+
 
 // Middleware
 app.use(express.json());
