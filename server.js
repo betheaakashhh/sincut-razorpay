@@ -20,21 +20,12 @@ await connectDB();
 // Initialize Express App
 const app = express();
 
-// =======================================================
-// 🌐 CORS Configuration - IMPROVED
-// =======================================================
-const allowedOrigins = [
-  'https://sincut.vercel.app',
-];
-
-// server.js — CORS setup (replace existing cors block)
 
 
-// Use a standard cors middleware + explicit options handler
+/// =======================================================
+// 🌐 CORS Configuration - SAFE for Vercel / Express 5+
 // =======================================================
-// 🌐 CORS Configuration - FINAL VERSION
-// =======================================================
-
+const allowedOrigins = ['https://sincut.vercel.app'];
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -47,16 +38,14 @@ app.use(cors({
   credentials: true,
 }));
 
-// ✅ Fixed preflight handler for Express 4.21+
-app.options(/.*/, cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-}));
-
+// Remove any app.options(...) usage — handle preflight manually:
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', allowedOrigins.includes(req.headers.origin) ? req.headers.origin : allowedOrigins[0]);
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
+  }
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
