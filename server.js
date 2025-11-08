@@ -6,6 +6,8 @@ import cors from 'cors';
 import { v2 as cloudinary } from 'cloudinary';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
+import errorMiddleware from './middleware/errorMiddleware.js';
+
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
@@ -26,17 +28,24 @@ const app = express();
 // 🌐 CORS Configuration - SAFE for Vercel / Express 5+
 // =======================================================
 const allowedOrigins = ['https://sincut.vercel.app'];
-
+// Replace your current CORS setup with this:
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
+  origin: ['https://sincut.vercel.app', 'http://localhost:3000'],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
+
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     if (!origin) return callback(null, true);
+//     if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+//       return callback(null, true);
+//     }
+//     return callback(new Error('Not allowed by CORS'));
+//   },
+//   credentials: true,
+// }));
 
 // Remove any app.options(...) usage — handle preflight manually:
 app.use((req, res, next) => {
@@ -315,6 +324,8 @@ function getDummyPhotos() {
 // =======================================================
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
+app.use(errorMiddleware.notFound);
+app.use(errorMiddleware.errorHandler);
 
 // =======================================================
 // 🚀 Launch Server
