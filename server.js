@@ -24,48 +24,47 @@ const app = express();
 
 
 
-/// =======================================================
-// 🌐 CORS Configuration - SAFE for Vercel / Express 5+
 // =======================================================
-const allowedOrigins = ['https://sincut.vercel.app'];
-// Replace your current CORS setup with this:
+// 🌐 CORS Configuration - Simplified and Safe
+// =======================================================
+const allowedOrigins = ['https://sincut.vercel.app', 'http://localhost:3000'];
+
 app.use(cors({
-  origin: ['https://sincut.vercel.app', 'http://localhost:3000'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    
+    console.log('🚫 CORS blocked for origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
-// app.use(cors({
-//   origin: function (origin, callback) {
-//     if (!origin) return callback(null, true);
-//     if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-//       return callback(null, true);
-//     }
-//     return callback(new Error('Not allowed by CORS'));
-//   },
-//   credentials: true,
-// }));
+// =======================================================
+// 🛠️ Middleware Setup
+// =======================================================
 
-// Remove any app.options(...) usage — handle preflight manually:
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else {
-    res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
-  }
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
-
-
-// Middleware
 app.use(express.json());
 app.use(cookieParser());
+
+// 🔍 Debug middleware 
+app.use((req, res, next) => {
+  console.log('📨 Incoming Request:', {
+    method: req.method,
+    path: req.path,
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length'],
+    body: req.body ? 'Present' : 'Missing',
+    bodyKeys: req.body ? Object.keys(req.body) : 'None'
+  });
+  next();
+});
 
 
 // =======================================================
