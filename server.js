@@ -326,6 +326,17 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use(errorMiddleware.notFound);
 app.use(errorMiddleware.errorHandler);
 
+//debugging 
+router.get("/dashboard", protect, (req, res, next) => {
+  console.log('📊 Dashboard route hit for user:', req.user.id);
+  next();
+}, getReferralDashboard);
+
+router.get("/wallet", protect, (req, res, next) => {
+  console.log('💰 Wallet route hit for user:', req.user.id);
+  next();
+}, getWallet);
+
 // =======================================================
 // 🚀 Launch Server
 // =======================================================
