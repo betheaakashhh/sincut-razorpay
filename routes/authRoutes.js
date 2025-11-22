@@ -23,6 +23,7 @@ router.post('/logout', logout);
 // @route GET /api/auth/me
 // @desc Get current user info
 // @access Private
-router.get('/me', protect, getMe);  
+router.get('/me', protect, getMe); 
+
 
 export default router;

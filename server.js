@@ -7,8 +7,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
-
-
+import referralRoutes from './routes/referralRoutes.js';
 // Import routes
 import authRoutes from './routes/authRoutes.js';
 
@@ -154,6 +153,7 @@ app.get('/api/test', (req, res) => {
 // 🔐 Auth Routes
 // =======================================================
 app.use('/api/auth', authRoutes);
+app.use('/api/referral', referralRoutes);
 
 // =======================================================
 // 🧠 Cloudinary Debug Route

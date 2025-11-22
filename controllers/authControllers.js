@@ -3,14 +3,14 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { generateToken, generateRefreshToken } from '../utils/generateToken.js';
-
+import { generateReferralCode } from '../utils/generateReferralCode.js';
 /* ============================================================
    @desc    Register a new user
    @route   POST /api/auth/register
    @access  Public
 =============================================================== */
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, gender, occupationType, occupation, agreedToPrivacyPolicy } = req.body;
+  const { name, email, password, gender, occupationType, occupation, agreedToPrivacyPolicy , referral } = req.body;
 
   if (!email || !password) {
     res.status(400);
@@ -31,6 +31,9 @@ export const register = asyncHandler(async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   const hashed = await bcrypt.hash(password, salt);
 
+  // Generate referral code
+  const referralCode = generateReferralCode(name);
+  // create new user
   const user = await User.create({
     name,
     email,
@@ -38,8 +41,29 @@ export const register = asyncHandler(async (req, res) => {
     gender,
     occupationType,
     occupation,
-    agreedToPrivacyPolicy
+    agreedToPrivacyPolicy,
+    referralCode,
+    referredBy: referral || null,
   });
+
+  if(referral){
+    const referrer = await User.findOne({ referralCode: referral });
+    if(referrer){
+      referrer.referrals = (referrer.referrals||0) + 1;
+      referrer.referralCoins += 40; // assuming each referral gives 40 coins
+
+      referrer.referralHistory.push({
+        referredUserId: user._id,
+        referredUserName: user.name,
+        type: 'Signup Bonus',
+        date: new Date(),
+        amount: 40,
+      });
+      await referrer.save();
+    }
+  }
+
+
 
   if (!user) {
     res.status(400);
@@ -71,7 +95,8 @@ export const register = asyncHandler(async (req, res) => {
       role: user.role,
       gender:user.gender,
       occupationType:user.occupationType,
-        occupation:user.occupation
+        occupation:user.occupation,
+        referralCode: user.referralCode,
     },
     accessToken,
   });
