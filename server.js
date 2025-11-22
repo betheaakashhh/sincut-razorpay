@@ -115,6 +115,12 @@ app.get('/', (req, res) => {
         refresh: 'POST /api/auth/refresh-token',
         me: 'GET /api/auth/me'
       },
+       referral: {
+        dashboard: 'GET /api/referral/dashboard',
+        wallet: 'GET /api/referral/wallet',
+        convert: 'POST /api/referral/convert',
+        useDivine: 'POST /api/referral/use-divine'
+      },
       cloudinary: 'GET /api/cloudinary-debug',
       photos: 'GET /api/photos',
       razorpay: 'POST /create-order'
@@ -326,16 +332,7 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use(errorMiddleware.notFound);
 app.use(errorMiddleware.errorHandler);
 
-//debugging 
-router.get("/dashboard", protect, (req, res, next) => {
-  console.log('📊 Dashboard route hit for user:', req.user.id);
-  next();
-}, getReferralDashboard);
 
-router.get("/wallet", protect, (req, res, next) => {
-  console.log('💰 Wallet route hit for user:', req.user.id);
-  next();
-}, getWallet);
 
 // =======================================================
 // 🚀 Launch Server
