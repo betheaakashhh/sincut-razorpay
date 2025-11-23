@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import generateReferralCode from '../utils/generateReferralCode';
+import generateReferralCode from '../utils/generateReferralCode.js';
 
 export const userSchema = new mongoose.Schema(
   {
