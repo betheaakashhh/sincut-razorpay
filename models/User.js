@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import generateReferralCode from '../utils/generateReferralCode';
 
 export const userSchema = new mongoose.Schema(
   {
@@ -40,7 +41,13 @@ export const userSchema = new mongoose.Schema(
        REFERRAL SYSTEM
     -------------------------------------------------*/
 
-    referralCode: { type: String, unique: true }, // auto-generated on registration
+    referralCode: { 
+      type: String, 
+      unique: true,
+      default: function(){
+        // Generate a simple referral code
+        return generateReferralCode(this.name);
+      } }, // auto-generated on registration
 
     referredBy: { type: String, default: null }, // someone’s referral code
 
