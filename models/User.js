@@ -1,5 +1,11 @@
 import mongoose from 'mongoose';
-import generateReferralCode from '../utils/generateReferralCode.js';
+
+// Define the generateReferralCode function directly in this file
+const generateReferralCode = (name = "") => {
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const prefix = name ? name.slice(0, 3).toUpperCase() : "USR";
+  return `${prefix}-${random}`;
+};
 
 export const userSchema = new mongoose.Schema(
   {
@@ -44,41 +50,73 @@ export const userSchema = new mongoose.Schema(
     referralCode: { 
       type: String, 
       unique: true,
-      default: function(){
-        // Generate a simple referral code
+      default: function() {
+        // Use the locally defined function
         return generateReferralCode(this.name);
-      } }, // auto-generated on registration
+      }
+    },
 
-    referredBy: { type: String, default: null }, // someone’s referral code
+    referredBy: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'User',
+      default: null 
+    },
 
-    referralCount: { type: Number, default: 0 }, // how many people they referred
+    referralCount: { type: Number, default: 0 },
 
-    referralCoins: { type: Number, default: 0 }, // total coins from referrals
+    referralCoins: { type: Number, default: 0 },
 
     referralHistory: [
       {
-        type: {
+        action: {
           type: String,
-          enum: ['signup_bonus', 'confession_payment'],
+          enum: ['signup_bonus', 'confession_payment', 'referral_bonus'],
         },
-        referredUser: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        amount: Number,      // e.g. +40, +20, +50
-        createdAt: { type: Date, default: Date.now }
+        referredUser: { 
+          type: mongoose.Schema.Types.ObjectId, 
+          ref: "User" 
+        },
+        amount: Number,
+        date: { 
+          type: Date, 
+          default: Date.now 
+        },
+        by: String // Track who initiated the action
       }
     ],
-    //coins & wallet
+
+    /* -----------------------------------------------
+       COINS & WALLET
+    -------------------------------------------------*/
+    coins: { type: Number, default: 0 },
+    
     divineCoins: { type: Number, default: 0 },
+
     walletHistory: [
       {
-        type: { type: String, enum: ['earn','spend','convert']
-      },
+        type: { 
+          type: String, 
+          enum: [
+            'earn', 
+            'spend', 
+            'convert', 
+            'conversion', 
+            'divine_coin_received', 
+            'divine_coin_used', 
+            'referral_bonus', 
+            'confession_payment_bonus'
+          ]
+        },
         amount: Number,
         description: String,
-        createdAt: { type: Date, default: Date.now,
-        message: String
-         }
+        message: String,
+        createdAt: { 
+          type: Date, 
+          default: Date.now 
+        }
       }
     ],
+
     /* -----------------------------------------------
        ACCOUNT SETTINGS
     -------------------------------------------------*/
@@ -94,10 +132,12 @@ export const userSchema = new mongoose.Schema(
       smsUpdates: { type: Boolean, default: false }
     },
 
-    coins: { type: Number, default: 0 },
-
   },
   { timestamps: true }
 );
+
+// Add index for better performance
+userSchema.index({ referralCode: 1 });
+userSchema.index({ referredBy: 1 });
 
 export default mongoose.model('User', userSchema);
