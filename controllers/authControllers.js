@@ -37,7 +37,7 @@ export const register = asyncHandler(async (req, res) => {
   // Generate unique referral code for new user
   const userReferralCode = generateReferralCode(name);
   
-  // Create new user with initial coins
+    // Create new user with initial coins - UPDATED FOR NEW SYSTEM
   const user = await User.create({
     name,
     email,
@@ -48,40 +48,39 @@ export const register = asyncHandler(async (req, res) => {
     agreedToPrivacyPolicy,
     referralCode: userReferralCode,
     referredBy: referralCode || null,
-    coins: referralCode ? 40 : 0, // Give 40 coins if registered with referral
+    coins: referralCode ? 150 : 50, // New user gets 150 coins with referral, 50 without
   });
 
-  console.log('✅ User created:', user.email);
-
-  // Handle referral reward if referral code was provided
+  // Handle referral reward if referral code was provided - UPDATED
   if (referralCode) {
     console.log('🎁 Processing referral for code:', referralCode);
     const referrer = await User.findOne({ referralCode: referralCode });
     
     if (referrer) {
-      // Give referrer 40 coins
-      referrer.coins += 40;
+      // Give referrer 50 coins - UPDATED
+      referrer.coins += 50;
       referrer.referralCount = (referrer.referralCount || 0) + 1;
+      referrer.referralCoins = (referrer.referralCoins || 0) + 50;
 
       // Add to referral history
       referrer.referralHistory.push({
         type: 'signup_bonus',
         referredUser: user._id,
         referredUserName: user.name,
-        amount: 40,
+        amount: 50,
         createdAt: new Date()
       });
 
       // Add to wallet history
       referrer.walletHistory.push({
         type: 'referral_bonus',
-        amount: 40,
+        amount: 50,
         description: `Referral bonus for ${user.name}`,
         createdAt: new Date()
       });
 
       await referrer.save();
-      console.log('✅ Referrer rewarded:', referrer.email, '+40 coins');
+      console.log('✅ Referrer rewarded:', referrer.email, '+50 coins');
     } else {
       console.log('❌ Referrer not found for code:', referralCode);
     }
@@ -110,7 +109,7 @@ export const register = asyncHandler(async (req, res) => {
 
   // Return response with user data and access token
   res.status(201).json({
-    message: referralCode ? 'User registered successfully with referral bonus! 🎉' : 'User registered successfully',
+    message: referralCode ? 'User registered successfully with 150 referral bonus! 🎉' : 'User registered successfully with 50 welcome coins!',
     user: {
       _id: user._id,
       name: user.name,
@@ -125,9 +124,12 @@ export const register = asyncHandler(async (req, res) => {
     },
     accessToken,
     referralBonus: referralCode ? {
-      message: 'You received 40 coins for using a referral code!',
-      coins: 40
-    } : null
+      message: 'You received 150 coins for using a referral code!',
+      coins: 150
+    } : {
+      message: "You received 50 welcome coins",
+      coins: 50
+    }
   });
 });
 

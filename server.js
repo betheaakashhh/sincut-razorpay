@@ -10,7 +10,7 @@ import errorMiddleware from './middleware/errorMiddleware.js';
 import referralRoutes from './routes/referralRoutes.js';
 // Import routes
 import authRoutes from './routes/authRoutes.js';
-
+import walletRoutes from './routes/walletRoutes.js';
 // Load environment variables
 dotenv.config();
 
@@ -41,7 +41,7 @@ app.use(cors({
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
@@ -100,6 +100,9 @@ const razorpay = new Razorpay({
 // =======================================================
 // 🏠 Root & Health Routes
 // =======================================================
+// =======================================================
+// 🏠 Root & Health Routes
+// =======================================================
 app.get('/', (req, res) => {
   res.json({
     status: 'Server is running ✅',
@@ -115,11 +118,13 @@ app.get('/', (req, res) => {
         refresh: 'POST /api/auth/refresh-token',
         me: 'GET /api/auth/me'
       },
-       referral: {
-        dashboard: 'GET /api/referral/dashboard',
-        wallet: 'GET /api/referral/wallet',
-        convert: 'POST /api/referral/convert',
-        useDivine: 'POST /api/referral/use-divine'
+      referral: {
+        dashboard: 'GET /api/referral/dashboard'
+      },
+      wallet: { // ADD THIS SECTION
+        get: 'GET /api/wallet',
+        convert: 'POST /api/wallet/convert-to-divine',
+        useDivine: 'POST /api/wallet/use-divine-coin'
       },
       cloudinary: 'GET /api/cloudinary-debug',
       photos: 'GET /api/photos',
@@ -139,6 +144,13 @@ app.get('/api/health', (req, res) => {
     cors: {
       allowedOrigins: allowedOrigins,
       credentials: true
+    },
+    features: {
+      auth: '✅ Active',
+      referral: '✅ Active', // ADD THIS
+      wallet: '✅ Active',   // ADD THIS
+      payments: process.env.RAZORPAY_KEY_ID ? '✅ Active' : '❌ Inactive',
+      cloudinary: process.env.CLOUDINARY_CLOUD_NAME ? '✅ Active' : '❌ Inactive'
     }
   });
 });
@@ -160,6 +172,7 @@ app.get('/api/test', (req, res) => {
 // =======================================================
 app.use('/api/auth', authRoutes);
 app.use('/api/referral', referralRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // =======================================================
 // 🧠 Cloudinary Debug Route

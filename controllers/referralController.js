@@ -68,32 +68,41 @@ export const rewardReferralPayment = asyncHandler(async (req, res) => {
   });
 });
 
+/* ============================================================
+   @desc    Get referral dashboard data
+   @route   GET /api/referral/dashboard
+   @access  Private
+=============================================================== */
 export const getReferralDashboard = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id);
+  const userId = req.user.id;
 
-  if (!user) throw new Error("User not found");
+  const user = await User.findById(userId)
+    .populate('referralHistory.referredUser', 'name email')
+    .select('referralCode referralCount referralCoins referralHistory');
 
-  const totalReferredUsers = user.referralHistory.filter(
-    h => h.type === "signup"
-  ).length;
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
 
+  // Calculate totals
   const totalSignupBonus = user.referralHistory
-    .filter(h => h.type === "signup")
-    .reduce((sum, h) => sum + h.amount, 0);
+    .filter(item => item.type === 'signup_bonus')
+    .reduce((sum, item) => sum + item.amount, 0);
 
   const totalConfessionBonus = user.referralHistory
-    .filter(h => h.type === "confession_payment")
-    .reduce((sum, h) => sum + h.amount, 0);
+    .filter(item => item.type === 'confession_payment')
+    .reduce((sum, item) => sum + item.amount, 0);
 
-  res.json({
+  const totalReferredUsers = user.referralCount || 0;
+
+  res.status(200).json({
     referralCode: user.referralCode,
-    referredBy: user.referredBy,
-    referralCoins: user.coins,
-    divineCoins: user.divineCoins,
     totalReferredUsers,
+    referralCoins: user.referralCoins || 0,
     totalSignupBonus,
     totalConfessionBonus,
-    history: user.referralHistory
+    history: user.referralHistory || []
   });
 });
 
