@@ -11,13 +11,9 @@ router.get("/dashboard", protect, (req, res, next) => {
   next();
 }, getReferralDashboard);
 
-router.get("/wallet", protect, (req, res, next) => {
-  console.log('💰 Wallet route hit for user:', req.user.id);
-  next();
-}, getWallet);
+
 
 router.post("/reward-payment", protect, rewardReferralPayment);
-router.post("/convert", protect, convertCoinsToDivine);
-router.post("/use-divine", protect, useDivineCoin);
+
 
 export default router;
