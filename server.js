@@ -11,6 +11,7 @@ import referralRoutes from './routes/referralRoutes.js';
 // Import routes
 import authRoutes from './routes/authRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
+import userRoutes from "./routes/userRoutes.js";
 // Load environment variables
 dotenv.config();
 
@@ -173,6 +174,8 @@ app.get('/api/test', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use("/api/user", userRoutes);
+
 
 // =======================================================
 // 🧠 Cloudinary Debug Route
