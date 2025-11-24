@@ -1,5 +1,5 @@
 import express from "express";
-import authMiddleware from "../middleware/authMiddleware.js";
+import {protect} from "../middleware/authMiddleware.js";
 import {
   getUserProfile,
   updateUserProfile,
@@ -9,12 +9,12 @@ import {
 const router = express.Router();
 
 // GET user profile
-router.get("/profile", authMiddleware, getUserProfile);
+router.get("/profile", protect, getUserProfile);
 
 // UPDATE profile fields
-router.put("/update-profile", authMiddleware, updateUserProfile);
+router.put("/update-profile", protect, updateUserProfile);
 
 // UPDATE avatar (preset)
-router.put("/update-avatar", authMiddleware, updateAvatar);
+router.put("/update-avatar", protect, updateAvatar);
 
 export default router;
