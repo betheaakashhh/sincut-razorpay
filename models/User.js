@@ -125,7 +125,12 @@ export const userSchema = new mongoose.Schema(
 
     phone: { type: String, default: null },
 
-    bio: { type: String, maxLength: 200 },
+    bio: { type: String, maxLength: 222 }, // Changed from 200 to 222
+
+    dateOfBirth: {  // NEW FIELD - Not editable with age restriction
+      type: Date,
+      required: false
+    },
 
     notifications: {
       emailUpdates: { type: Boolean, default: true },
@@ -139,5 +144,20 @@ export const userSchema = new mongoose.Schema(
 // Add index for better performance
 userSchema.index({ referralCode: 1 });
 userSchema.index({ referredBy: 1 });
+
+// Virtual for age calculation
+userSchema.virtual('age').get(function() {
+  if (!this.dateOfBirth) return null;
+  const today = new Date();
+  const birthDate = new Date(this.dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+});
 
 export default mongoose.model('User', userSchema);
